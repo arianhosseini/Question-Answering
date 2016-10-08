@@ -87,6 +87,9 @@ def init_params(data_dim, lstm_dim):
     # ptr parameters
     params['ptr_W1'] = rand_weight(lstm_dim, lstm_dim, -0.08, 0.08)
     params['ptr_W2'] = rand_weight(lstm_dim, lstm_dim, -0.08, 0.08)
+    b1 = numpy.zeros((1,lstm_dim))
+    params['ptr_b1'] = b1.astype(theano.config.floatX)
+
     params['ptr_v'] = rand_weight(lstm_dim, 1, -0.08, 0.08)[:, 0]
 
     return params
@@ -149,19 +152,56 @@ def ptr_network(tparams, cqembed, context_mask, ans_indices, ans_indices_mask, d
         prob = softmax(hiddens_mask, attention_weights)
         return decoded, c, prob
 
+    def prediction_ptr_probs_ver1(prior_word_index, prob, decoded_old, c_, cenc, hiddens_mask): #decoded_old Initialized with cenc[-1]
+        # prior_word_embedding = cqembed[prior_word_index, tensor.arange(n_samples), :] # batch_size * (embed+2*lstm_size)
+
+
+        attention_weights = tensor.dot(cenc, tparams['ptr_W1']) + (tensor.dot(decoded_old, tparams['ptr_W2'])  +tensor.repeat(tparams['ptr_b1'],decoded_old.shape[0],axis=0)) #(context)length * batch_size * (decoder_lstm_output_dim=lstm_size*2)
+        attention_weights = tensor.tanh(attention_weights)  # length * batch_size * lstm_size*2
+        attention_weights = tensor.dot(attention_weights, tparams['ptr_v'])  # length * batch_size
+        prob = softmax(hiddens_mask, attention_weights)
+
+        probs = prob
+        probs = probs.reshape((probs.shape[0],probs.shape[1],1))
+        probs = tensor.repeat(probs, cenc.shape[2], axis=2) #lc,bs,dim
+        attended_passage = (probs * cenc).sum(axis=0) #bs,dim
+
+        decoded, c = _lstm(tensor.ones(shape=(5),dtype=theano.config.floatX), attended_passage, decoded_old, c_, 'lstm_de') # batch_size * decoder_lstm_output_dim
+        prediction_index = prob.argmax(axis=0) #batch_size
+        return prediction_index, prob, decoded, c
+
+    def _ptr_probs_ver1(ans_indice_mask, ans_indice, decoded_old, c_, prob_old, cenc, hiddens_mask): #decoded_old Initialized with cenc[-1]
+        # pred_cembed = cqembed[ans_indice, tensor.arange(n_samples), :]  # batch_size * (embed+2*lstm_size)
+
+        attention_weights = tensor.dot(cenc, tparams['ptr_W1']) + (tensor.dot(decoded_old, tparams['ptr_W2'])+ tensor.repeat(tparams['ptr_b1'],decoded_old.shape[0],axis=0)) #(context)length * batch_size * (decoder_lstm_output_dim=lstm_size*2)
+        attention_weights = tensor.tanh(attention_weights)  # length * batch_size * lstm_size*2
+        attention_weights = tensor.dot(attention_weights, tparams['ptr_v'])  # length * batch_size
+        prob = softmax(hiddens_mask, attention_weights)
+
+        probs = prob
+        probs = probs.reshape((probs.shape[0],probs.shape[1],1))
+        probs = tensor.repeat(probs, cenc.shape[2], axis=2) #lc,bs,dim
+        attended_passage = (probs * cenc).sum(axis=0) #bs,dim
+
+        decoded, c = _lstm(ans_indice_mask, attended_passage, decoded_old, c_, 'lstm_de') # batch_size * decoder_lstm_output_dim
+
+        return decoded, c, prob
+
+
     # decoding
     hiddens_mask = tensor.set_subtensor(context_mask[0, :], tensor.constant(1, dtype=theano.config.floatX))
     gen_steps = 5
-    gen_vals , _ = theano.scan(prediction_ptr_probs,
+    gen_vals , _ = theano.scan(prediction_ptr_probs_ver1,
                                   sequences=None,
                                   outputs_info=[tensor.alloc(numpy.int64(0), n_samples), #context_length * batch_size
+                                                tensor.alloc(numpy_floatX(0.), gen_steps, n_samples),
                                                 cenc[-1],
                                                 tensor.alloc(numpy_floatX(0.), n_samples, decoder_lstm_output_dim)],  #decoded embeddings (d in paper) cells[-1], #batch_size * (decoder_lstm_output_dim=2*lstm_size)
                                   non_sequences=[cenc, hiddens_mask],
                                   name="generating",
                                   n_steps=gen_steps)
 
-    rval, _ = theano.scan(_ptr_probs,
+    rval, _ = theano.scan(_ptr_probs_ver1,
                           sequences=[ans_indices_mask, ans_indices],
                           outputs_info=[cenc[-1],  # batch_size * (dim_proj=decoder_lstm_output_dim=2*lstm_size) init value for decoded step i-1
                                         tensor.alloc(numpy_floatX(0.), n_samples, decoder_lstm_output_dim),  #decoded embeddings (d in paper) cells[-1], #batch_size * (decoder_lstm_output_dim=2*lstm_size)
@@ -250,6 +290,7 @@ class Model():
         add_role(tparams['lstm_de_W'],WEIGHT)
         add_role(tparams['lstm_de_U'],WEIGHT)
         add_role(tparams['lstm_de_b'],BIAS)
+        add_role(tparams['ptr_b1'],BIAS)
         add_role(tparams['ptr_v'],WEIGHT)
         add_role(tparams['ptr_W1'],WEIGHT)
         add_role(tparams['ptr_W2'],WEIGHT)

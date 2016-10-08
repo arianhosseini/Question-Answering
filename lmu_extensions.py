@@ -42,21 +42,21 @@ class EvaluateModel(SimpleExtension):
         data.pop('answers', None)
 
         temp = self.gen_fun(**data)
-        print"temp: "
+        # print"temp: "
         predictions_indices = np.asarray(temp).T
-        print predictions_indices
+        # print predictions_indices
 
         # ww = raw_input("thiss: ")
         # predictions = temp[0].T
         context = data['context']
-        print context[0]
+        # print context[0]
         predictions = []
         for i,ctx in enumerate(context): #loop over all contexts to get answers
             # print context[i,predictions_indices[i]]
             predictions.append(context[i,predictions_indices[i]])
 
 
-        print "predictions:"
+        # print "predictions:"
         predictions = np.asarray(predictions)
         # print predictions
 
@@ -64,6 +64,7 @@ class EvaluateModel(SimpleExtension):
             for i in range(len(predictions)):
                 for j in range(len(predictions[i,:])):
                     if self.vocab[predictions[i,j]] == "<EOA>":
+                        print "found <EOA>, all zeros"
                         predictions[i,j:] = 0
                         break;
             for i in range(len(predictions)):

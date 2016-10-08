@@ -153,17 +153,17 @@ class SQuADDataset(Dataset):
         a = self.to_word_ids(a.split(' '))
         answers = [self.to_word_ids(answer.split(' ')) for answer in answers ]
 
-        anslist = numpy.asarray([5], dtype=numpy.int32)
+        anslist = numpy.asarray([5,0], dtype=numpy.int32)
         for i in range(len(ctx)):
             if numpy.array_equal(ctx[i:i+len(a)],a):
-                anslist = numpy.arange(i,i+len(a),dtype=numpy.int32)
+                anslist = numpy.concatenate((numpy.arange(i,i+len(a),dtype=numpy.int32),numpy.arange(0,dtype=numpy.int32)))
                 break
 
         #print ('---')
         #print ('context: '+ ctx[:200] + ' ...')
         #print ('question: ' + q)
         #print ('answer: ' + a)
-        #print ('answer list: ', anslist)
+        # print ('answer list: ', anslist)
 
         if not numpy.all(ctx < self.vocab_size):
             raise ValueError("Context word id out of bounds: %d"%int(ctx.max()))

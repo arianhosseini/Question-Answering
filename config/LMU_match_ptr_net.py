@@ -6,7 +6,7 @@ from model.match_ptr_net import Model
 
 add_cnn_data = 0.0
 
-batch_size = 32
+batch_size = 20
 sort_batch_count = 20
 
 shuffle_questions = True
@@ -15,12 +15,12 @@ shuffle_entities = True
 concat_ctx_and_question = False
 concat_question_before = False
 
-embed_size = 300
+embed_size = 100
 
-pre_lstm_size = 150
+pre_lstm_size = 120
 pre_skip_connections = False
 
-match_lstm_size = [150]
+match_lstm_size = [120]
 match_skip_connections = True
 
 #ptr_net decoder config:

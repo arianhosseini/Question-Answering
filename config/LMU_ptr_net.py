@@ -22,7 +22,7 @@ question_lstm_size = [256]
 question_skip_connections = True
 
 #ptr_net decoder config:
-decoder_data_dim = embed_size + 2*ctx_lstm_size[0]
+decoder_data_dim =  2*ctx_lstm_size[0]
 decoder_lstm_output_dim = 2*ctx_lstm_size[0]
 
 generator_lstm_size = 256
