@@ -266,6 +266,10 @@ class Model():
         att_weights_question = att_weights_question.reshape((c_hidden.shape[0], q_hidden.shape[1], q_hidden.shape[0])) # --> lc,bs,lq
         att_weights_question = att_weights_question.dimshuffle(0, 2, 1) # --> lc,lq,bs
 
+        question_context_attention = att_weights_question.dimshuffle(2, 1, 0)
+        question_context_attention.name = "question_context_attention"
+
+        self.analyse_vars = [question_context_attention]
         attended_question = tensor.sum(q_hidden[None, :, :, :] * att_weights_question[:, :, :, None], axis=1) # sum over axis 1 -> length of question --> lc,bs,dim
         attended_question.name = 'attended_question'
 

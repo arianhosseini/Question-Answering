@@ -15,10 +15,95 @@ import matplotlib.colors as colors
 
 import data
 
+import plotly
+import plotly.plotly as py
+import plotly.graph_objs as go
+
+
 logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
 
 sys.setrecursionlimit(500000)
+
+
+def build_evaluator(model_name):
+    config = importlib.import_module('.%s' % model_name, 'config')
+    config.batch_size = 1
+    config.shuffle_questions = False
+
+    # Build datastream
+    valid_path = os.path.join(os.getcwd(), "squad_rare/dev-v1.0_tokenized.json")
+    vocab_path = os.path.join(os.getcwd(), "squad_rare/vocab.txt")
+    import data
+    ds, valid_stream = data.setup_squad_datastream(valid_path, vocab_path, config)
+
+    dump_path = os.path.join("model_params", model_name + ".pkl")
+
+    # Build model
+    m = config.Model(config, ds.vocab_size)
+    model = Model(m.sgd_cost)
+
+    if os.path.isfile(dump_path):
+        with open(dump_path, 'r') as f:
+            print "Analysing %s from best dump" % (model_name)
+            model.set_parameter_values(cPickle.load(f))
+    else:
+        print "Analysing %s with random parameters" % (model_name)
+
+    evaluator = DatasetEvaluator(m.analyse_vars)
+    return evaluator, valid_stream, ds
+
+def gen_heatmap(model_name):
+
+    evaluator, valid_stream, ds = build_evaluator(model_name)
+    analysis_path = os.path.join('heatmap_analysis', model_name + ".html")
+
+    out_file = open(analysis_path, 'w')
+    out_file.write('<html>')
+    out_file.write('<body style="background-color:white">')
+    
+    printed = 0;
+    for batch in valid_stream.get_epoch_iterator(as_dict=True):
+
+        if batch["context"].shape[1] > 150:
+            continue;
+
+        evaluator.initialize_aggregators()
+        evaluator.process_batch(batch)
+        analysis_results = evaluator.get_aggregated_values()
+        q_c_attention = analysis_results["question_context_attention"]
+
+        context_words = [ds.vocab[i]+' '+str(index) for index,i in enumerate(batch["context"][0])]
+        question_words = [str(index)+' '+ ds.vocab[i] for index, i in enumerate(batch["question"][0])]
+        answer_words = [ds.vocab[i] for i in batch["answer"][0]]
+
+        out_file.write('answer: '+' '.join(answer_words))
+        out_file.write('<br>')
+
+        x= context_words
+        y= question_words
+        z = q_c_attention[0]
+        # print z.shape
+
+        data = [
+            go.Heatmap(z=z,x=x,y=y,colorscale='Viridis')
+        ]
+        div = plotly.offline.plot(data,auto_open=False, output_type='div')
+        out_file.write(div)
+        out_file.write('<br>')
+        out_file.write('<br>')
+
+        printed += 1
+        if printed >= 20:
+            break;
+
+
+    out_file.write('</body>')
+    out_file.write('</html>')
+    out_file.close()
+    print "done ;)"
+
+
 
 def analyse(model_name):
 
@@ -121,18 +206,19 @@ def analyse(model_name):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) == 1:
-        for file in os.listdir("model_params/"):
-            if file.endswith("_best.pkl"):
-                model_name = file.replace("_best.pkl", "")
-                try:
-                    analyse(model_name)
-                except:
-                    print "Error while analysing %s" % (model_name)
-
-    elif len(sys.argv) > 2:
-        print >> sys.stderr, 'Usage: %s config' % sys.argv[0]
-        sys.exit(1)
-    else:
-        model_name = sys.argv[1]
-        analyse(model_name)
+    # if len(sys.argv) == 1:
+    #     for file in os.listdir("model_params/"):
+    #         if file.endswith("_best.pkl"):
+    #             model_name = file.replace("_best.pkl", "")
+    #             try:
+    #                 analyse(model_name)
+    #             except:
+    #                 print "Error while analysing %s" % (model_name)
+    #
+    # elif len(sys.argv) > 2:
+    #     print >> sys.stderr, 'Usage: %s config' % sys.argv[0]
+    #     sys.exit(1)
+    # else:
+    #     model_name = sys.argv[1]
+    #     analyse(model_name)
+    gen_heatmap('LMU_match_ptr_net')

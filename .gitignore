@@ -158,6 +158,7 @@ glove
 embeddings/*
 model_params/*
 analysis/
+heatmap_analysis/
 
 
 tokenizedonly_allans_dev-v1.0_tokenized.json
