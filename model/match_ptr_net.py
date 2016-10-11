@@ -87,8 +87,12 @@ def init_params(data_dim, lstm_dim):
     # ptr parameters
     params['ptr_W1'] = rand_weight(lstm_dim, lstm_dim, -0.08, 0.08)
     params['ptr_W2'] = rand_weight(lstm_dim, lstm_dim, -0.08, 0.08)
+
     b1 = numpy.zeros((1,lstm_dim))
     params['ptr_b1'] = b1.astype(theano.config.floatX)
+
+    b2 = numpy.zeros((1))
+    params['ptr_b2'] = b2.astype(theano.config.floatX)
 
     params['ptr_v'] = rand_weight(lstm_dim, 1, -0.08, 0.08)[:, 0]
 
@@ -158,7 +162,7 @@ def ptr_network(tparams, cqembed, context_mask, ans_indices, ans_indices_mask, d
 
         attention_weights = tensor.dot(cenc, tparams['ptr_W1']) + (tensor.dot(decoded_old, tparams['ptr_W2'])  +tensor.repeat(tparams['ptr_b1'],decoded_old.shape[0],axis=0)) #(context)length * batch_size * (decoder_lstm_output_dim=lstm_size*2)
         attention_weights = tensor.tanh(attention_weights)  # length * batch_size * lstm_size*2
-        attention_weights = tensor.dot(attention_weights, tparams['ptr_v'])  # length * batch_size
+        attention_weights = tensor.dot(attention_weights, tparams['ptr_v']) + tensor.repeat(tensor.repeat(tparams['ptr_b2'], attention_weights.shape[0]),attention_weights.shape[1]).reshape((attention_weights.shape[0],attention_weights.shape[1]))  # length * batch_size
         prob = softmax(hiddens_mask, attention_weights)
 
         probs = prob
@@ -172,10 +176,9 @@ def ptr_network(tparams, cqembed, context_mask, ans_indices, ans_indices_mask, d
 
     def _ptr_probs_ver1(ans_indice_mask, ans_indice, decoded_old, c_, prob_old, cenc, hiddens_mask): #decoded_old Initialized with cenc[-1]
         # pred_cembed = cqembed[ans_indice, tensor.arange(n_samples), :]  # batch_size * (embed+2*lstm_size)
-
         attention_weights = tensor.dot(cenc, tparams['ptr_W1']) + (tensor.dot(decoded_old, tparams['ptr_W2'])+ tensor.repeat(tparams['ptr_b1'],decoded_old.shape[0],axis=0)) #(context)length * batch_size * (decoder_lstm_output_dim=lstm_size*2)
         attention_weights = tensor.tanh(attention_weights)  # length * batch_size * lstm_size*2
-        attention_weights = tensor.dot(attention_weights, tparams['ptr_v'])  # length * batch_size
+        attention_weights = tensor.dot(attention_weights, tparams['ptr_v'] ) + tensor.repeat(tensor.repeat(tparams['ptr_b2'], attention_weights.shape[0]),attention_weights.shape[1]).reshape((attention_weights.shape[0],attention_weights.shape[1]))  # length * batch_size
         prob = softmax(hiddens_mask, attention_weights)
 
         probs = prob
@@ -186,8 +189,6 @@ def ptr_network(tparams, cqembed, context_mask, ans_indices, ans_indices_mask, d
         decoded, c = _lstm(ans_indice_mask, attended_passage, decoded_old, c_, 'lstm_de') # batch_size * decoder_lstm_output_dim
 
         return decoded, c, prob
-
-
     # decoding
     hiddens_mask = tensor.set_subtensor(context_mask[0, :], tensor.constant(1, dtype=theano.config.floatX))
     gen_steps = 5
@@ -291,6 +292,7 @@ class Model():
         add_role(tparams['lstm_de_U'],WEIGHT)
         add_role(tparams['lstm_de_b'],BIAS)
         add_role(tparams['ptr_b1'],BIAS)
+        add_role(tparams['ptr_b2'],BIAS)
         add_role(tparams['ptr_v'],WEIGHT)
         add_role(tparams['ptr_W1'],WEIGHT)
         add_role(tparams['ptr_W2'],WEIGHT)
