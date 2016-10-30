@@ -244,14 +244,14 @@ def unanonymise_cnn(path='cnn_questions', new_path='cnn_new_questions'):
         new_file.write( '\n'.join(new_lines) )
         new_file.close()
 
-def compute_length_coverage(train_path='squad/train-v1.0_tokenized.json'):
+def compute_length_coverage(train_path='new_dev-v1.0_tokenized.json'):
     import json
     import itertools
     # import matplotlib.pyplot as plt
-    untokenized = json.load(open("squad/train-v1.0.json"))
+    untokenized = json.load(open("squad/dev-v1.0.json"))
 
     d = json.load(open(train_path))
-    rared = json.load(open('squad_rare/train-v1.0_tokenized.json'))
+    rared = json.load(open('squad_rare/dev-v1.0_tokenized.json'))
     lengths = []
     count = 0
     total = 0
@@ -310,14 +310,48 @@ def tokenize_data(path, new_path):
     tokenized_sentences = []
     for reading in d['data']:
         for paragraph in reading['paragraphs']:
-            paragraph['context'] = ' '.join(nltk.tokenize.word_tokenize(paragraph['context'].lower()))
+            context_text = paragraph['context'].lower()
+
             # temp = ' '.join(nltk.tokenize.word_tokenize(paragraph['context'].lower()))
             for question in paragraph['qas']:
                 question['question'] = ' '.join(nltk.tokenize.word_tokenize(question['question'].lower()))
                 # print (nltk.tokenize.word_tokenize(question['answers'][0]['text'].strip().lower()))
                 for i,answer in enumerate(question['answers']):
-                    question['answers'][i]['text'] = ' '.join(nltk.tokenize.word_tokenize(question['answers'][0]['text'].strip().lower()))
-                print (question['answers'])
+                    answer_start_index = context_text.find(question['answers'][i]['text'].strip().lower())
+                    if answer_start_index == -1:
+                        answer_start_index = question['answers'][i]['answer_start']
+                    answer_length = len(question['answers'][i]['text'].strip())
+                    answer_text = context_text[answer_start_index:answer_start_index + answer_length].strip()
+                    if answer_text != question['answers'][i]['text'].strip().lower():
+                        print ("not equallll")
+                        print ("actual: ",question['answers'][i]['text'].strip().lower(), len(question['answers'][i]['text'].strip().lower()))
+                        print ("answer text: ", answer_text, len(answer_text))
+                        print (answer_start_index)
+                        print(answer_length)
+
+
+                    context_before_answer = context_text[:answer_start_index].lower()
+                    context_after_answer = context_text[answer_start_index+answer_length:].lower()
+                    tokenized_answer = nltk.tokenize.word_tokenize(answer_text)
+                    question['answers'][i]['text'] = ' '.join(tokenized_answer)
+                    # paragraph['context'] = ' '.join(nltk.tokenize.word_tokenize(paragraph['context'].lower()))
+                    # if question['answers'][i]['text'] == "smith and jones":
+                    #     print (context_before_answer)
+                    #     print (tokenized_answer)
+                    #     print (context_after_answer)
+
+                    # context_list = nltk.tokenize.word_tokenize(context_befor_answer) + tokenized_answer +  nltk.tokenize.word_tokenize(context_after_answer)
+                    tokenized_context = ' '.join(nltk.tokenize.word_tokenize(context_before_answer)) + \
+                                       ' '+' '.join(tokenized_answer)+' '+\
+                                       ' '.join(nltk.tokenize.word_tokenize(context_after_answer))
+                    # tokenized_context = ' '.join(context_list)
+
+                    # print ("1st: ",' '.join(nltk.tokenize.word_tokenize(context_befor_answer)))
+                    # print ("answer: ", ' '+ ' '.join(nltk.tokenize.word_tokenize(answer_text)))
+                    # print ("2nd: ", ' '.join(nltk.tokenize.word_tokenize(context_after_answer)))
+                    paragraph['context'] = tokenized_context
+                # print (question['answers'])
+
 
     # for i in sorted(answers,key=len)[-10:]:
     #     print(len(i))
@@ -338,7 +372,7 @@ def main():
     # add_rare_to_cnn('../data/rc-data_unanonymized/cnn/questions/validation','../data/rc-data_unanonymized_rare/cnn/validation/validation')
 
 
-    compute_length_coverage()
+    # compute_length_coverage()
 
     # add_rare_to_squad()
     #add_rare_to_squad('squad/train-v1.0_tokenized.json')
@@ -348,7 +382,7 @@ def main():
     # unanonymise_cnn('/mounts/work/gpu/sascha/data/rc-data/cnn/questions/validation', '/mounts/work/gpu/sascha/data/rc-data-unanonymized/cnn/questions/validation')
 
     # tokenize_data('squad/train-v1.0.json', 'squad/train-v1.0_tokenized.json' )
-    # tokenize_data('squad/dev-v1.0.json', '_dev-v1.0_tokenized.json' )
+    tokenize_data('squad/train-v1.0.json', 'new_train-v1.0_tokenized.json' )
     # generate_squad_vocab('train-v1.0.json')
 
 if __name__ == '__main__':

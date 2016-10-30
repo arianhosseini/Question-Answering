@@ -45,6 +45,8 @@ if __name__ == "__main__":
     valid_path = os.path.join(os.getcwd(), "squad_rare/dev-v1.0_tokenized.json")
     vocab_path = os.path.join(os.getcwd(), "squad_rare/vocab.txt")
 
+
+
     if len(sys.argv) == 3:
         logger.info("Using toy data")
         ds , train_stream = data.setup_toy_datastream(config)
@@ -60,8 +62,9 @@ if __name__ == "__main__":
         else:
             # Build datastream
             logger.info("Using SQuAD data")
-            ds, train_stream = data.setup_squad_datastream(path, vocab_path, config)
-            _, valid_stream = data.setup_squad_datastream(valid_path, vocab_path, config)
+            ds, train_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewtrn.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config)
+            # ds, train_stream = data.setup_squad_datastream(path, vocab_path, config)
+            _, valid_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewtrn.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config, 221697)
 
         dump_path = os.path.join("model_params", model_name+".pkl")
 
@@ -70,7 +73,7 @@ if __name__ == "__main__":
 
     # Build the Blocks stuff for training
     model = Model(m.sgd_cost)
-    test_model = Model(m.generations)
+    # test_model = Model(m.generations)
 
     algorithm = GradientDescent(cost=m.sgd_cost,
                                 step_rule=config.step_rule,
@@ -109,7 +112,7 @@ if __name__ == "__main__":
         ]
     extensions += [
             Printing(after_epoch=True),
-            EvaluateModel(path="", model=test_model, data_stream=valid_stream, vocab_size = ds.vocab_size, vocab = ds.vocab, eval_mode='batch', quiet=True, after_epoch=True),
+            # EvaluateModel(path="", model=test_model, data_stream=valid_stream, vocab_size = ds.vocab_size, vocab = ds.vocab, eval_mode='batch', quiet=True, after_epoch=True),
             ProgressBar()
     ]
 

@@ -8,7 +8,7 @@ from picklable_itertools import iter_
 
 from fuel.datasets import Dataset
 from fuel.streams import DataStream
-from fuel.schemes import IterationScheme, ConstantScheme
+from fuel.schemes import IterationScheme, ConstantScheme, ShuffledScheme, ShuffledExampleScheme
 from fuel.transformers import Batch, Mapping, SortMapping, Unpack, Padding, Transformer
 
 import sys
@@ -105,12 +105,108 @@ class CNNSQIterator(IterationScheme):
             print "Shuffling CNN and SQuAD (should occur every epoch)"
             random.shuffle(self.refs)
         return iter_(self.refs)
+class RankerExample():
+    def __init__(self):
+        self.indices = ''
+        self.question = ''
+        self.answer = ''
+        self.better = ''
+        self.worse = ''
+        self.b_left = ''
+        self.b_right = ''
+        self.w_left = ''
+        self.w_right = ''
+        self.b_score = 0.0
+        self.w_score = 0.0
 
+
+class SQuADRankerDataset(Dataset):
+    def __init__(self, path, vocab_file, **kwargs):
+
+        self.provides_sources = ('question', 'answer', 'better', 'worse', 'b_left', 'b_right','w_left','w_right')
+        self.path = path
+        self.data = open(self.path,'r')
+        self.examples = []
+        example_count = 0
+        line_count = 0
+        exampe = None
+
+
+        print "loading file ..."
+        self.data = self.data.readlines()
+        # while True:
+        #     lines = []
+        #     try:
+        #         example = RankerExample()
+        #         example.indices = self.data.readline()
+        #         example.question = self.data.readline()
+        #         example.answer = self.data.readline()
+        #         example.better = self.data.readline()
+        #         example.b_score = self.data.readline()
+        #         example.b_left = self.data.readline()
+        #         example.b_right = self.data.readline()
+        #         example.worse = self.data.readline()
+        #         example.w_score = self.data.readline()
+        #         example.w_left = self.data.readline()
+        #         example.w_right = self.data.readline()
+        #         self.examples.append(exampe)
+        #     except StopIteration:
+        #         print "file loaded"
+        #         break
+
+
+        print "file loaded"
+        self.vocab = ['<DUMMY>', '<EOA>', '@placeholder', '<UNK>'] + [ w.strip().split()[0] for w in open(vocab_file) ]
+
+        self.vocab_size = len(self.vocab)
+        # print("vocab size: %d"%self.vocab_size)
+        self.reverse_vocab = {w: i for i, w in enumerate(self.vocab)}
+        super(SQuADRankerDataset, self).__init__(**kwargs)
+
+    def to_word_id(self, w):
+        ''' word to index'''
+        if w in self.reverse_vocab:
+            return self.reverse_vocab[w]
+        else:
+            return self.reverse_vocab['<UNK>']
+
+    def to_word_ids(self, s):
+        ''' words to indices '''
+        return numpy.array([self.to_word_id(x) for x in s], dtype=numpy.int32)
+
+    def get_data(self, state=None, request=None):
+
+        if request is None or state is not None:
+            raise ValueError("Expected a request (name of a question file) and no state.")
+
+        idx = self.data[request*11].strip()
+        q = self.to_word_ids(self.data[request*11 + 1].strip().lower().split())
+        a = self.to_word_ids(self.data[request*11 + 2].strip()[2:].lower().split())
+        b = self.to_word_ids(self.data[request*11 + 3].strip()[2:].lower().split())
+        bl = self.to_word_ids(self.data[request*11 + 5].strip().lower().split())
+        br = self.to_word_ids(self.data[request*11 + 6].strip().lower().split())
+        w = self.to_word_ids(self.data[request*11 + 7].strip()[2:].lower().split())
+        wl = self.to_word_ids(self.data[request*11 + 9].strip().lower().split())
+        wr = self.to_word_ids(self.data[request*11 + 10].strip().lower().split())
+        # print q
+        # print self.data[request*11 + 2].strip()[2:].lower().split()
+        # print self.data[request*11 + 3].strip()[2:].lower().split()
+        # print w
+        # print wl
+
+        return q, a, b, w, bl, br, wl, wr
+
+        # if not numpy.all(q < self.vocab_size):
+            # raise ValueError("Question word id out of bounds: %d"%int(q.max()))
+        # if not numpy.all(q >= 0):
+            # raise ValueError("Question word id negative: %d"%int(q.min()))
+
+        # return (ctx, q, a, answers, anslist, ans_boundaries)
 
 class SQuADDataset(Dataset):
     def __init__(self, path, vocab_file, **kwargs):
 
-        self.provides_sources = ('context', 'question', 'answer', 'answers', 'ans_indices')
+        self.provides_sources = ('context', 'question', 'answer', 'answers', 'ans_indices', 'ans_boundaries')
         self.path = path
         self.data = json.load(open(path)) #actual json data
         self.vocab = ['<DUMMY>', '<EOA>', '@placeholder', '<UNK>'] + [ w.strip().split()[0] for w in open(vocab_file) ]
@@ -153,11 +249,14 @@ class SQuADDataset(Dataset):
         a = self.to_word_ids(a.split(' '))
         answers = [self.to_word_ids(answer.split(' ')) for answer in answers ]
 
-        anslist = numpy.asarray([5,0], dtype=numpy.int32)
+        anslist = numpy.asarray([random.randint(1,len(ctx))-1,0], dtype=numpy.int32)
         for i in range(len(ctx)):
             if numpy.array_equal(ctx[i:i+len(a)],a):
                 anslist = numpy.concatenate((numpy.arange(i,i+len(a),dtype=numpy.int32),numpy.asarray([0],dtype=numpy.int32)))
                 break
+
+
+        ans_boundaries = numpy.asarray([anslist[0],anslist[-2]],dtype=numpy.int32)
 
         # print ('---')
         # print ('context: ', ctx[:200] , '  ...')
@@ -174,7 +273,7 @@ class SQuADDataset(Dataset):
         if not numpy.all(q >= 0):
             raise ValueError("Question word id negative: %d"%int(q.min()))
 
-        return (ctx, q, a, answers, anslist)
+        return (ctx, q, a, answers, anslist, ans_boundaries)
 
 class ToyDataset(Dataset):
     def __init__(self, **kwargs):
@@ -389,13 +488,36 @@ def setup_squad_datastream(path, vocab_file, config):
     stream = Unpack(stream)
 
     stream = Batch(stream, iteration_scheme=ConstantScheme(config.batch_size))
-    stream = Padding(stream, mask_sources=['context', 'question', 'answer', 'ans_indices'], mask_dtype='int32')
+    stream = Padding(stream, mask_sources=['context', 'question', 'answer', 'ans_indices','ans_boundaries'], mask_dtype='int32')
 
     return ds, stream
 
 
+#train examples count 1836975
+#dev examples count 221697
+def setup_squad_ranker_datastream(path, vocab_file, config, example_count=1836975):
+    ds = SQuADRankerDataset(path, vocab_file)
+    it = ShuffledExampleScheme(examples=example_count)
+    stream = DataStream(ds, iteration_scheme=it)
+
+
+    # Sort sets of multiple batches to make batches of similar sizes
+    stream = Batch(stream, iteration_scheme=ConstantScheme(config.batch_size * config.sort_batch_count))
+    comparison = _balanced_batch_helper(stream.sources.index('question'))
+    stream = Mapping(stream, SortMapping(comparison))
+    stream = Unpack(stream)
+
+    stream = Batch(stream, iteration_scheme=ConstantScheme(config.batch_size))
+    stream = Padding(stream, mask_sources=['question', 'answer', 'better', 'worse', 'b_left', 'b_right','w_left','w_right'], mask_dtype='int32')
+
+    return ds, stream
+
+
+
 if __name__ == "__main__":
     # Test
+
+    line_count = 2438667
     class DummyConfig:
         def __init__(self):
             self.shuffle_entities = True
@@ -426,7 +548,7 @@ if __name__ == "__main__":
     #     # print d
 
     # numpy.set_printoptions(suppress=True)
-    ds, stream = setup_squad_datastream('squad_rare/dev-v1.0_tokenized.json', 'squad_rare/vocab.txt', DummyConfig())
+    ds, stream = setup_squad_ranker_datastream('squad_short/squadnewtrn.txt', 'squad/vocab.txt', DummyConfig())
     it = stream.get_epoch_iterator()
     for i, d in enumerate(stream.get_epoch_iterator()):
         print '--'
