@@ -17,6 +17,78 @@ from blocks.main_loop import MainLoop
 from blocks.model import Model
 from blocks.algorithms import GradientDescent
 
+class RankerEvaluator(SimpleExtension):
+    def __init__(self, path, model, data_stream, vocab_size, vocab, eval_mode, quiet=False, iter_num=1, **kwargs):
+        super(RankerEvaluator, self).__init__(**kwargs)
+        self.path = path
+        self.model = model
+        self.data_stream = data_stream
+        self.iter_num = iter_num
+        self.gen_fun = self.model.get_theano_function()
+        self.vocab_size = vocab_size
+        self.eval_mode = eval_mode
+        self.quiet = quiet
+        self.vocab = vocab
+        self.best_macroF1 = 0.0
+
+
+    def generate_candidates(self, context):
+        pass
+
+
+
+
+    def compute_batch(self, data, batch_num):
+
+
+        # data.pop('answer_mask', None)
+        # data.pop('answer', None)
+        data.pop('b_right_mask',None)
+        data.pop('b_left_mask',None)
+        data.pop('w_right_mask',None)
+        data.pop('w_left_mask',None)
+        # data.pop('worse',None)
+        data.pop('w_right',None)
+        data.pop('w_left',None)
+        data.pop('b_right',None)
+        data.pop('b_left',None)
+        data.pop('answer',None)
+        data.pop('answer_mask',None)
+
+        temp = self.gen_fun(**data)
+
+        print"temp: "
+        print temp
+
+    def do_load(self):
+        try:
+            with open(self.path, 'r') as f:
+                print 'Loading parameters from ' + self.path
+                self.model.set_parameter_values(cPickle.load(f))
+        except IOError:
+            print 'Error in loading!'
+
+    def do(self, which_callback, *args):
+        if self.path != "":
+            self.do_load()
+        epoch_iter = self.data_stream.get_epoch_iterator(as_dict=True)
+
+        count = 0
+        macroF1 = 0.0
+        num_of_examples = 0.0
+        precision_sum, recall_sum, exact_sum,f1_sum = 0.0 , 0.0 , 0.0, 0.0
+
+        for data in epoch_iter:
+            # data = epoch_iter.next()
+            # print('batch %d'%count)
+            count += 1
+            self.compute_batch(data, count)
+            
+
+            if self.eval_mode == 'batch':
+                break
+
+
 class EvaluateModel(SimpleExtension):
     def __init__(self, path, model, data_stream, vocab_size, vocab, eval_mode, quiet=False, iter_num=1, **kwargs):
         super(EvaluateModel, self).__init__(**kwargs)

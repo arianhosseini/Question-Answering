@@ -137,8 +137,6 @@ class Model():
         #computing better encoding
         better_embed = embed.apply(better)
         better_fwd_tmp = candidate_fwd_lstm_ins.apply(better_embed)
-        # numpy.set_printoptions(edgeitems=500)
-        # better_fwd_tmp = theano.printing.Print('better_fwd_tmp')(better_fwd_tmp)
         better_bwd_tmp = candidate_bwd_lstm_ins.apply(better_embed)
         better_fwd_hidden, _ = candidate_fwd_lstm.apply(better_fwd_tmp, mask=better_mask.astype(theano.config.floatX))
         better_bwd_hidden, _ = candidate_bwd_lstm.apply(better_bwd_tmp[::-1], mask=better_mask.astype(theano.config.floatX)[::-1])
@@ -156,7 +154,7 @@ class Model():
         worse_bwd_hidden, _ = candidate_bwd_lstm.apply(worse_bwd_tmp[::-1], mask=worse_mask.astype(theano.config.floatX)[::-1])
         worse_hidden_list = [worse_fwd_hidden, worse_bwd_hidden]
         worse_enc_dim = 2*sum(config.ctx_lstm_size)
-        worse_enc = tensor.concatenate([h[-1,:,:] for h in better_hidden_list], axis=1)
+        worse_enc = tensor.concatenate([h[-1,:,:] for h in worse_hidden_list], axis=1)
         worse_enc.name = 'worse_enc'
         candidates_hidden_list = candidates_hidden_list + [worse_fwd_hidden, worse_bwd_hidden]
 
@@ -180,7 +178,9 @@ class Model():
 
         #cost : max(0,- score-better + score-worse + margin)
         margin = 0.01
+
         conditions = tensor.lt(better_pred_weights, worse_pred_weights + margin).astype(theano.config.floatX)
+        self.predictions = conditions
         cost = (-better_pred_weights + worse_pred_weights + margin) * conditions
         cost = cost.mean()
 

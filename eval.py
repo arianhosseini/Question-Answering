@@ -19,7 +19,8 @@ from blocks.algorithms import GradientDescent
 
 import data
 from paramsaveload import SaveLoadParams
-from lmu_extensions import EvaluateModel
+from lmu_extensions import EvaluateModel, RankerEvaluator
+
 
 logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
@@ -43,19 +44,21 @@ if __name__ == "__main__":
     valid_path = os.path.join(os.getcwd(), "squad_rare/dev-v1.0_tokenized.json")
     vocab_path = os.path.join(os.getcwd(), "squad_rare/vocab.txt")
 
-    ds, valid_stream = data.setup_squad_datastream(valid_path, vocab_path, config)
+    # ds, valid_stream = data.setup_squad_datastream(valid_path, vocab_path, config)
+    ds, valid_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewtrn.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config, 221697)
     snapshot_path = os.path.join("model_params", model_name+".pkl")
 
     # Build model
     m = config.Model(config, ds.vocab_size)
 
     # Build the Blocks stuff for training
-    test_model = Model(m.generations)
+    # test_model = Model(m.generations)
+    test_model = Model(m.predictions)
     model = Model(m.sgd_cost)
 
     algorithm = None
 
-    extensions = [EvaluateModel(path=snapshot_path, model=test_model, data_stream=valid_stream, vocab_size = ds.vocab_size, vocab = ds.vocab, eval_mode=eval_mode, before_training=True)]
+    extensions = [RankerEvaluator(path=snapshot_path, model=test_model, data_stream=valid_stream, vocab_size = ds.vocab_size, vocab = ds.vocab, eval_mode=eval_mode, before_training=True)]
 
     main_loop = MainLoop(
         model=model,
