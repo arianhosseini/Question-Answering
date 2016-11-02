@@ -121,8 +121,7 @@ class Model():
             qenc = tensor.concatenate([h[-1,:,:] for h in qhidden_list[-2:]], axis=1)
         qenc.name = 'qenc'
 
-        # Calculate context encoding (concatenate layer1)
-
+        # candidate encoders
         candidates_hidden_list = []
 
         candidate_fwd_lstm_ins = Linear(input_dim=config.embed_size, output_dim=4*config.ctx_lstm_size[0], name='candidate_fwd_lstm_in_0_0')
@@ -158,23 +157,100 @@ class Model():
         worse_enc.name = 'worse_enc'
         candidates_hidden_list = candidates_hidden_list + [worse_fwd_hidden, worse_bwd_hidden]
 
+
+        #left encoders
+        left_context_hidden_list = []
+
+        left_context_fwd_lstm_ins = Linear(input_dim=config.embed_size, output_dim=4*config.ctx_lstm_size[0], name='left_context_fwd_lstm_in_0_0')
+        left_context_fwd_lstm = LSTM(dim=config.ctx_lstm_size[0], activation=Tanh(), name='left_context_fwd_lstm_0')
+
+        left_context_bwd_lstm_ins = Linear(input_dim=config.embed_size, output_dim=4*config.ctx_lstm_size[0], name='left_context_bwd_lstm_in_0_0')
+        left_context_bwd_lstm = LSTM(dim=config.ctx_lstm_size[0], activation=Tanh(), name='left_context_bwd_lstm_0')
+
+        #adding encoding bricks for initialization
+        bricks = bricks + [left_context_fwd_lstm, left_context_bwd_lstm, left_context_fwd_lstm_ins, left_context_bwd_lstm_ins]
+
+        #right encoders
+        right_context_hidden_list = []
+
+        right_context_fwd_lstm_ins = Linear(input_dim=config.embed_size, output_dim=4*config.ctx_lstm_size[0], name='right_context_fwd_lstm_in_0_0')
+        right_context_fwd_lstm = LSTM(dim=config.ctx_lstm_size[0], activation=Tanh(), name='right_context_fwd_lstm_0')
+
+        right_context_bwd_lstm_ins = Linear(input_dim=config.embed_size, output_dim=4*config.ctx_lstm_size[0], name='right_context_bwd_lstm_in_0_0')
+        right_context_bwd_lstm = LSTM(dim=config.ctx_lstm_size[0], activation=Tanh(), name='right_context_bwd_lstm_0')
+
+        #adding encoding bricks for initialization
+        bricks = bricks + [right_context_fwd_lstm, right_context_bwd_lstm, right_context_fwd_lstm_ins, right_context_bwd_lstm_ins]
+
+
+        #left half encodings
+        better_left_embed = embed.apply(b_left)
+        better_left_fwd_tmp = left_context_fwd_lstm_ins.apply(better_left_embed)
+        better_left_bwd_tmp = left_context_bwd_lstm_ins.apply(better_left_embed)
+        better_left_fwd_hidden, _ = left_context_fwd_lstm.apply(better_left_fwd_tmp, mask=b_left_mask.astype(theano.config.floatX))
+        better_left_bwd_hidden, _ = left_context_bwd_lstm.apply(better_left_bwd_tmp[::-1], mask=b_left_mask.astype(theano.config.floatX)[::-1])
+        better_left_hidden_list = [better_left_fwd_hidden, better_left_bwd_hidden]
+        better_left_enc_dim = 2*sum(config.ctx_lstm_size)
+        better_left_enc = tensor.concatenate([h[-1,:,:] for h in better_left_hidden_list], axis=1) #concating last state of fwd and bwd LSTMs 2*dim * batch_size
+        better_left_enc.name = 'better_left_enc'
+        left_context_hidden_list = left_context_hidden_list + [better_left_fwd_hidden, better_left_bwd_hidden]
+
+        worse_left_embed = embed.apply(w_left)
+        worse_left_fwd_tmp = left_context_fwd_lstm_ins.apply(worse_left_embed)
+        worse_left_bwd_tmp = left_context_bwd_lstm_ins.apply(worse_left_embed)
+        worse_left_fwd_hidden, _ = left_context_fwd_lstm.apply(worse_left_fwd_tmp, mask=w_left_mask.astype(theano.config.floatX))
+        worse_left_bwd_hidden, _ = left_context_bwd_lstm.apply(worse_left_bwd_tmp[::-1], mask=w_left_mask.astype(theano.config.floatX)[::-1])
+        worse_left_hidden_list = [worse_left_fwd_hidden, worse_left_bwd_hidden]
+        worse_left_enc_dim = 2*sum(config.ctx_lstm_size)
+        worse_left_enc = tensor.concatenate([h[-1,:,:] for h in worse_left_hidden_list], axis=1) #concating last state of fwd and bwd LSTMs 2*dim * batch_size
+        worse_left_enc.name = 'worse_left_enc'
+        left_context_hidden_list = left_context_hidden_list + [worse_left_fwd_hidden, worse_left_bwd_hidden]
+
+
+        #right half encoding
+        better_right_embed = embed.apply(b_right)
+        better_right_fwd_tmp = right_context_fwd_lstm_ins.apply(better_right_embed)
+        better_right_bwd_tmp = right_context_bwd_lstm_ins.apply(better_right_embed)
+        better_right_fwd_hidden, _ = right_context_fwd_lstm.apply(better_right_fwd_tmp, mask=b_right_mask.astype(theano.config.floatX))
+        better_right_bwd_hidden, _ = right_context_bwd_lstm.apply(better_right_bwd_tmp[::-1], mask=b_right_mask.astype(theano.config.floatX)[::-1])
+        better_right_hidden_list = [better_right_fwd_hidden, better_right_bwd_hidden]
+        better_right_enc_dim = 2*sum(config.ctx_lstm_size)
+        better_right_enc = tensor.concatenate([h[-1,:,:] for h in better_right_hidden_list], axis=1) #concating last state of fwd and bwd LSTMs 2*dim * batch_size
+        better_right_enc.name = 'better_right_enc'
+        right_context_hidden_list = right_context_hidden_list + [better_right_fwd_hidden, better_right_bwd_hidden]
+
+        worse_right_embed = embed.apply(w_right)
+        worse_right_fwd_tmp = right_context_fwd_lstm_ins.apply(worse_right_embed)
+        worse_right_bwd_tmp = right_context_bwd_lstm_ins.apply(worse_right_embed)
+        worse_right_fwd_hidden, _ = right_context_fwd_lstm.apply(worse_right_fwd_tmp, mask=w_right_mask.astype(theano.config.floatX))
+        worse_right_bwd_hidden, _ = right_context_bwd_lstm.apply(worse_right_bwd_tmp[::-1], mask=w_right_mask.astype(theano.config.floatX)[::-1])
+        worse_right_hidden_list = [worse_right_fwd_hidden, worse_right_bwd_hidden]
+        worse_right_enc_dim = 2*sum(config.ctx_lstm_size)
+        worse_right_enc = tensor.concatenate([h[-1,:,:] for h in worse_right_hidden_list], axis=1) #concating last state of fwd and bwd LSTMs 2*dim * batch_size
+        worse_right_enc.name = 'worse_right_enc'
+        right_context_hidden_list = right_context_hidden_list + [worse_right_fwd_hidden, worse_right_bwd_hidden]
+
+
         # F1 prediction MLP
         prediction_mlp = MLP(dims=config.prediction_mlp_hidden + [1],
                              activations=config.prediction_mlp_activations[1:] + [Identity()],
                              name='prediction_mlp')
 
-        prediction_qlinear = Linear(input_dim=qenc_dim, output_dim=config.prediction_mlp_hidden[0]/2.0, name='preq')
-        prediction_cand_linear = Linear(input_dim=worse_enc_dim, output_dim=config.prediction_mlp_hidden[0]/2.0, use_bias=False, name='precand')
-
-        bricks += [prediction_mlp, prediction_qlinear, prediction_cand_linear]
-        better_layer1 = Tanh('tan1').apply(tensor.concatenate([prediction_cand_linear.apply(better_enc), prediction_qlinear.apply(qenc)],axis=1))
+        prediction_qlinear = Linear(input_dim=qenc_dim, output_dim=config.prediction_mlp_hidden[0]/4.0, name='preq')
+        prediction_cand_linear = Linear(input_dim=worse_enc_dim, output_dim=config.prediction_mlp_hidden[0]/4.0, use_bias=False, name='precand')
+        prediction_left_half_linear = Linear(input_dim=better_left_enc_dim, output_dim=config.prediction_mlp_hidden[0]/4.0, use_bias=False, name='preleft')
+        prediction_right_half_linear = Linear(input_dim=better_right_enc_dim, output_dim=config.prediction_mlp_hidden[0]/4.0, use_bias=False, name='preright')
+        bricks += [prediction_mlp, prediction_qlinear, prediction_cand_linear, prediction_left_half_linear, prediction_right_half_linear]
+        better_layer1 = Tanh('tan1').apply(tensor.concatenate([prediction_cand_linear.apply(better_enc), prediction_qlinear.apply(qenc), prediction_left_half_linear.apply(better_left_enc), prediction_right_half_linear.apply(better_right_enc)],axis=1))
         better_layer1.name = 'better_layer1'
 
-        worse_layer1 = Tanh('tan2').apply(tensor.concatenate([prediction_cand_linear.apply(worse_enc), prediction_qlinear.apply(qenc)],axis=1))
+        worse_layer1 = Tanh('tan2').apply(tensor.concatenate([prediction_cand_linear.apply(worse_enc), prediction_qlinear.apply(qenc), prediction_left_half_linear.apply(worse_left_enc), prediction_right_half_linear.apply(worse_right_enc)],axis=1))
         worse_layer1.name = 'worse_layer1'
 
-        better_pred_weights = Tanh('rec1').apply(prediction_mlp.apply(better_layer1)) #batch_size
-        worse_pred_weights = Tanh('rec2').apply(prediction_mlp.apply(worse_layer1)) #batch_size
+
+
+        better_pred_weights = Rectifier('rec1').apply(prediction_mlp.apply(better_layer1)) #batch_size
+        worse_pred_weights = Rectifier('rec2').apply(prediction_mlp.apply(worse_layer1)) #batch_size
 
         # numpy.set_printoptions(edgeitems=500)
         # better_pred_weights = theano.printing.Print('better')(better_pred_weights)

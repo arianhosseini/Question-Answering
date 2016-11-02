@@ -84,7 +84,7 @@ class RankerEvaluator(SimpleExtension):
             # data = epoch_iter.next()
             count += 1
             correct_examples = self.compute_batch(data, count)
-            print "batch #"+str(count)+" : "+str(correct_examles)
+            print "batch #"+str(count)+" : "+str(correct_examples)
             total_correct_examples += correct_examples
 
             if self.eval_mode == 'batch':

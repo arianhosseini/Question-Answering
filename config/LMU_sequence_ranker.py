@@ -5,7 +5,7 @@ from blocks.initialization import IsotropicGaussian, Constant, Orthogonal
 from model.sequence_ranker import Model
 
 
-batch_size = 20
+batch_size = 70
 sort_batch_count = 20
 
 shuffle_questions = True
@@ -14,7 +14,7 @@ shuffle_entities = True
 concat_ctx_and_question = False
 concat_question_before = False
 
-embed_size = 200
+embed_size = 400
 margin = 1.0
 ctx_lstm_size = [256]
 ctx_skip_connections = True
