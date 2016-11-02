@@ -298,6 +298,19 @@ def compute_length_coverage(train_path='new_dev-v1.0_tokenized.json'):
     # print(len(lengths))
     # print(lengths[int(0.9*len(lengths))])
 
+def compute_average_margin(path, example_count=1836975):
+    data = open(path,'r')
+    data = data.readlines()
+    count = 0.0
+    sum_of_margins = 0.0
+    for i in range(example_count):
+        count += 1.0
+        sum_of_margins = (float(data[i*11 + 4].strip()) - float(data[i*11 + 8].strip()))
+
+
+    print ("count: ", count)
+    print ("sum_of_margins: ", sum_of_margins)
+    print ("average margin: ", sum_of_margins/count)
 
 def tokenize_data(path, new_path):
     import json
@@ -382,7 +395,8 @@ def main():
     # unanonymise_cnn('/mounts/work/gpu/sascha/data/rc-data/cnn/questions/validation', '/mounts/work/gpu/sascha/data/rc-data-unanonymized/cnn/questions/validation')
 
     # tokenize_data('squad/train-v1.0.json', 'squad/train-v1.0_tokenized.json' )
-    tokenize_data('squad/train-v1.0.json', 'new_train-v1.0_tokenized.json' )
+    # tokenize_data('squad/train-v1.0.json', 'new_train-v1.0_tokenized.json' )
+    compute_average_margin("squad_short/squadnewtrn.txt")
     # generate_squad_vocab('train-v1.0.json')
 
 if __name__ == '__main__':

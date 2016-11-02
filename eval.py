@@ -45,7 +45,7 @@ if __name__ == "__main__":
     vocab_path = os.path.join(os.getcwd(), "squad_rare/vocab.txt")
 
     # ds, valid_stream = data.setup_squad_datastream(valid_path, vocab_path, config)
-    ds, valid_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewtrn.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config, 221697)
+    ds, valid_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewdev.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config, 221697)
     snapshot_path = os.path.join("model_params", model_name+".pkl")
 
     # Build model

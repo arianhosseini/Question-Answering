@@ -55,10 +55,11 @@ class RankerEvaluator(SimpleExtension):
         data.pop('answer',None)
         data.pop('answer_mask',None)
 
-        temp = self.gen_fun(**data)
+        temp = self.gen_fun(**data)[0]
 
         print"temp: "
         print temp
+        return temp.shape[0] - temp.sum()
 
     def do_load(self):
         try:
@@ -77,17 +78,18 @@ class RankerEvaluator(SimpleExtension):
         macroF1 = 0.0
         num_of_examples = 0.0
         precision_sum, recall_sum, exact_sum,f1_sum = 0.0 , 0.0 , 0.0, 0.0
-
+        total_correct_examples = 0.0
+        correct_examples = 0
         for data in epoch_iter:
             # data = epoch_iter.next()
-            # print('batch %d'%count)
             count += 1
-            self.compute_batch(data, count)
-            
+            correct_examples = self.compute_batch(data, count)
+            print "batch #"+str(count)+" : "+str(correct_examles)
+            total_correct_examples += correct_examples
 
             if self.eval_mode == 'batch':
                 break
-
+        print "total correct examples: ", total_correct_examples
 
 class EvaluateModel(SimpleExtension):
     def __init__(self, path, model, data_stream, vocab_size, vocab, eval_mode, quiet=False, iter_num=1, **kwargs):

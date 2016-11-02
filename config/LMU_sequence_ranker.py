@@ -15,14 +15,14 @@ concat_ctx_and_question = False
 concat_question_before = False
 
 embed_size = 200
-
+margin = 1.0
 ctx_lstm_size = [256]
 ctx_skip_connections = True
 
 question_lstm_size = [256]
 question_skip_connections = True
 
-prediction_mlp_hidden = [100]
+prediction_mlp_hidden = [200]
 prediction_mlp_activations = [Tanh()]
 
 step_rule = CompositeRule([RMSProp(decay_rate=0.95, learning_rate=5e-5),

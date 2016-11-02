@@ -163,22 +163,24 @@ class Model():
                              activations=config.prediction_mlp_activations[1:] + [Identity()],
                              name='prediction_mlp')
 
-        prediction_qlinear = Linear(input_dim=qenc_dim, output_dim=config.prediction_mlp_hidden[0], name='preq')
-        prediction_cand_linear = Linear(input_dim=worse_enc_dim, output_dim=config.prediction_mlp_hidden[0], use_bias=False, name='precand')
+        prediction_qlinear = Linear(input_dim=qenc_dim, output_dim=config.prediction_mlp_hidden[0]/2.0, name='preq')
+        prediction_cand_linear = Linear(input_dim=worse_enc_dim, output_dim=config.prediction_mlp_hidden[0]/2.0, use_bias=False, name='precand')
 
         bricks += [prediction_mlp, prediction_qlinear, prediction_cand_linear]
-        better_layer1 = Tanh('tan1').apply(prediction_cand_linear.apply(better_enc)+prediction_qlinear.apply(qenc))
+        better_layer1 = Tanh('tan1').apply(tensor.concatenate([prediction_cand_linear.apply(better_enc), prediction_qlinear.apply(qenc)],axis=1))
         better_layer1.name = 'better_layer1'
 
-        worse_layer1 = Tanh('tan2').apply(prediction_cand_linear.apply(worse_enc)+prediction_qlinear.apply(qenc))
+        worse_layer1 = Tanh('tan2').apply(tensor.concatenate([prediction_cand_linear.apply(worse_enc), prediction_qlinear.apply(qenc)],axis=1))
         worse_layer1.name = 'worse_layer1'
 
-        better_pred_weights = Rectifier('rec1').apply(prediction_mlp.apply(better_layer1)) #batch_size
-        worse_pred_weights = Rectifier('rec2').apply(prediction_mlp.apply(worse_layer1)) #batch_size
+        better_pred_weights = Tanh('rec1').apply(prediction_mlp.apply(better_layer1)) #batch_size
+        worse_pred_weights = Tanh('rec2').apply(prediction_mlp.apply(worse_layer1)) #batch_size
 
-        #cost : max(0,- score-better + score-worse + margin)
-        margin = 0.01
-
+        # numpy.set_printoptions(edgeitems=500)
+        # better_pred_weights = theano.printing.Print('better')(better_pred_weights)
+        # worse_pred_weights = theano.printing.Print('better')(worse_pred_weights)
+        # #cost : max(0,- score-better + score-worse + margin)
+        margin = config.margin
         conditions = tensor.lt(better_pred_weights, worse_pred_weights + margin).astype(theano.config.floatX)
         self.predictions = conditions
         cost = (-better_pred_weights + worse_pred_weights + margin) * conditions
