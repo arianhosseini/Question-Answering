@@ -120,23 +120,10 @@ def add_rare(ctx, q, a_list, vocab):
         for index, word in enumerate(iterable[i]):
             if not word in vocab or any(ord(char) not in range(128) for char in word):
                 if i >= 2:
-                    x = raw_input()
                     if word in rare_dict:
-                        print('-------')
-                        print ("c: ")
-                        print (' '.join(ctx))
-                        print ("a: ")
-                        print (' '.join(words),' '+rare_dict[word])
                         iterable[i][index] = rare_dict[word]
                         # print (word +' to '+ rare_dict[word])
                     else:
-                        print('===================')
-
-                        print ("c: ")
-                        print (' '.join(ctx))
-                        print ("a: ")
-                        print (' '.join(words))
-                        print (word)
                         rare_can = random.choice(rares)
                         rares.remove(rare_can)
                         rare_dict[word] = rare_can
@@ -146,30 +133,16 @@ def add_rare(ctx, q, a_list, vocab):
                 else:
                     if word in rare_dict:
                         if i >= 2:
-                            print('-------')
-                            print ("using old ...")
-                            print ("c: ")
-                            # print (' '.join(ctx))
-                            print ("a: ")
-                            print (' '.join(words),' '+rare_dict[word])
                         iterable[i][index] = rare_dict[word]
                         # print (word +' to '+ rare_dict[word])
                     else:
-                        if i >= 2:
-                            print('===================')
-                            print ("new rares")
-                            print ("c: ")
-                            # print (' '.join(ctx))
-                            print ("a: ")
-                            print (' '.join(words))
                         if len(rares) == 0:
                             return (False,'','','')
                         rare_can = random.choice(rares)
                         rares.remove(rare_can)
                         rare_dict[word] = rare_can
                         iterable[i][index] = rare_dict[word]
-    # print (iterable[2:])
-    # print((' '.join(ctx), ' '.join(q), ' '.join(a)))
+
     return (True, ' '.join(iterable[0]), ' '.join(iterable[1]), [' '.join(a) for a in iterable[2:]])
 
 def add_rare_to_squad(data_path='squad/dev-v1.0_tokenized.json',new_path='squad_rare_test', vocab_file='squad_rare/vocab.txt'):
@@ -215,8 +188,6 @@ def add_rare_to_cnn_document(i, file_name, data_path, new_path, vocab):
 def add_rare_to_cnn(data_path='deepmind-qa/cnn/questions/training',new_path='deepmind-qa/cnn_rare/questions/training', vocab_file='squad_rare/vocab.txt'):
     import itertools
     vocab = ['<DUMMY>', '<EOA>', '@placeholder', '<UNK>'] + [ w.strip().split()[0] for w in open(vocab_file) ]
-    #global bad_ctxs_count
-    #bad_ctxs_count = 0
 
     l = [f for f in os.listdir(data_path) if os.path.isfile(os.path.join(data_path, f))]
     print("number of files: "+str(len(l)))
@@ -249,7 +220,6 @@ def compute_length_coverage(train_path='new_dev-v1.0_tokenized.json'):
     import itertools
     # import matplotlib.pyplot as plt
     untokenized = json.load(open("squad/dev-v1.0.json"))
-
     d = json.load(open(train_path))
     rared = json.load(open('squad_rare/dev-v1.0_tokenized.json'))
     lengths = []
@@ -264,39 +234,18 @@ def compute_length_coverage(train_path='new_dev-v1.0_tokenized.json'):
                 total += 1
                 if answer in context:
                     pass
-                    # print ("it's in :D")
                 else:
                     count += 1
                     print ("-------")
-                    print ("it's not in :((((((((((((")
                     print ("C: "+context)
                     print ("C: "+untokenized['data'][i]['paragraphs'][j]['context'])
                     print('--')
                     print ('Q: '+q)
                     print('--')
                     print ("A: "+answer)
-
                 lengths.append(len(question['answers'][0]['text'].split(' ')))
     print (count)
     print(total)
-
-    # print(sorted(lengths))
-    # lengths = sorted(lengths)
-    # example_count = float(len(lengths))
-    # hist, bin_edges = numpy.histogram(lengths,bins=range(lengths[-1]))
-    # hist = numpy.array(hist,dtype=float)
-    # print(example_count)
-    # print(hist)
-    # for i in range(1,len(hist)):
-    #     hist[i] += (hist[i-1])
-    #
-    # hist /= example_count
-    # print(hist)
-    # plt.bar(bin_edges[:-1], hist, width = 1)
-    # plt.xlim(min(bin_edges), max(bin_edges))
-    # plt.show()
-    # print(len(lengths))
-    # print(lengths[int(0.9*len(lengths))])
 
 def compute_average_margin(path, example_count=1836975):
     data = open(path,'r')
@@ -325,79 +274,35 @@ def tokenize_data(path, new_path):
         for paragraph in reading['paragraphs']:
             context_text = paragraph['context'].lower()
 
-            # temp = ' '.join(nltk.tokenize.word_tokenize(paragraph['context'].lower()))
+
             for question in paragraph['qas']:
                 question['question'] = ' '.join(nltk.tokenize.word_tokenize(question['question'].lower()))
-                # print (nltk.tokenize.word_tokenize(question['answers'][0]['text'].strip().lower()))
                 for i,answer in enumerate(question['answers']):
                     answer_start_index = context_text.find(question['answers'][i]['text'].strip().lower())
                     if answer_start_index == -1:
                         answer_start_index = question['answers'][i]['answer_start']
                     answer_length = len(question['answers'][i]['text'].strip())
                     answer_text = context_text[answer_start_index:answer_start_index + answer_length].strip()
-                    if answer_text != question['answers'][i]['text'].strip().lower():
-                        print ("not equallll")
-                        print ("actual: ",question['answers'][i]['text'].strip().lower(), len(question['answers'][i]['text'].strip().lower()))
-                        print ("answer text: ", answer_text, len(answer_text))
-                        print (answer_start_index)
-                        print(answer_length)
-
 
                     context_before_answer = context_text[:answer_start_index].lower()
                     context_after_answer = context_text[answer_start_index+answer_length:].lower()
                     tokenized_answer = nltk.tokenize.word_tokenize(answer_text)
                     question['answers'][i]['text'] = ' '.join(tokenized_answer)
-                    # paragraph['context'] = ' '.join(nltk.tokenize.word_tokenize(paragraph['context'].lower()))
-                    # if question['answers'][i]['text'] == "smith and jones":
-                    #     print (context_before_answer)
-                    #     print (tokenized_answer)
-                    #     print (context_after_answer)
-
                     # context_list = nltk.tokenize.word_tokenize(context_befor_answer) + tokenized_answer +  nltk.tokenize.word_tokenize(context_after_answer)
                     tokenized_context = ' '.join(nltk.tokenize.word_tokenize(context_before_answer)) + \
                                        ' '+' '.join(tokenized_answer)+' '+\
                                        ' '.join(nltk.tokenize.word_tokenize(context_after_answer))
-                    # tokenized_context = ' '.join(context_list)
 
-                    # print ("1st: ",' '.join(nltk.tokenize.word_tokenize(context_befor_answer)))
-                    # print ("answer: ", ' '+ ' '.join(nltk.tokenize.word_tokenize(answer_text)))
-                    # print ("2nd: ", ' '.join(nltk.tokenize.word_tokenize(context_after_answer)))
                     paragraph['context'] = tokenized_context
-                # print (question['answers'])
 
 
-    # for i in sorted(answers,key=len)[-10:]:
-    #     print(len(i))
-    #     print (i)
     with open(new_path,'w') as outfile:
         json.dump(d, outfile)
 
 def main():
 
+    tokenize_data('squad/train-v1.0.json', 'squad/train-v1.0_tokenized.json' )
 
-    # embed = init_embedding_table()
-
-    # compute_length_coverage()
-    # write_vocab_embeddings(input_file='/mounts/data/proj/sascha/corpora/Embeddings/GoogleNews-vectors-negative300.txt')
-
-    # add_rare_to_cnn('../data/rc-data_unanonymized/cnn/questions/training','../data/rc-data_unanonymized_rare/cnn/questions/training')
-    # add_rare_to_cnn('../data/rc-data_unanonymized/cnn/questions/test','../data/rc-data_unanonymized_rare/cnn/questions/test')
-    # add_rare_to_cnn('../data/rc-data_unanonymized/cnn/questions/validation','../data/rc-data_unanonymized_rare/cnn/validation/validation')
-
-
-    # compute_length_coverage()
-
-    # add_rare_to_squad()
-    #add_rare_to_squad('squad/train-v1.0_tokenized.json')
-
-    # unanonymise_cnn('/mounts/work/gpu/sascha/data/rc-data/cnn/questions/training', '/mounts/work/gpu/sascha/data/rc-data-unanonymized/cnn/questions/training')
-    # unanonymise_cnn('/mounts/work/gpu/sascha/data/rc-data/cnn/questions/test', '/mounts/work/gpu/sascha/data/rc-data-unanonymized/cnn/questions/test')
-    # unanonymise_cnn('/mounts/work/gpu/sascha/data/rc-data/cnn/questions/validation', '/mounts/work/gpu/sascha/data/rc-data-unanonymized/cnn/questions/validation')
-
-    # tokenize_data('squad/train-v1.0.json', 'squad/train-v1.0_tokenized.json' )
-    # tokenize_data('squad/train-v1.0.json', 'new_train-v1.0_tokenized.json' )
-    compute_average_margin("squad_short/squadnewtrn.txt")
-    # generate_squad_vocab('train-v1.0.json')
 
 if __name__ == '__main__':
     main()

@@ -249,8 +249,8 @@ class Model():
 
 
 
-        better_pred_weights = Rectifier('rec1').apply(prediction_mlp.apply(better_layer1)) #batch_size
-        worse_pred_weights = Rectifier('rec2').apply(prediction_mlp.apply(worse_layer1)) #batch_size
+        better_pred_weights = Tanh('rec1').apply(prediction_mlp.apply(better_layer1)) #batch_size
+        worse_pred_weights = Tanh('rec2').apply(prediction_mlp.apply(worse_layer1)) #batch_size
 
         # numpy.set_printoptions(edgeitems=500)
         # better_pred_weights = theano.printing.Print('better')(better_pred_weights)

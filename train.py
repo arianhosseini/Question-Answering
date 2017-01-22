@@ -64,7 +64,7 @@ if __name__ == "__main__":
             logger.info("Using SQuAD data")
             ds, train_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewtrn.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config)
             # ds, train_stream = data.setup_squad_datastream(path, vocab_path, config)
-            _, valid_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewtrn.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config, 221697)
+            _, valid_stream = data.setup_squad_ranker_datastream(os.path.join(os.getcwd(),'squad_short/squadnewdev.txt'),os.path.join(os.getcwd(), 'squad/vocab.txt'),config, 221697)
 
         dump_path = os.path.join("model_params", model_name+".pkl")
 

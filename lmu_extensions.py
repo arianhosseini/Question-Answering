@@ -39,19 +39,7 @@ class RankerEvaluator(SimpleExtension):
 
 
     def compute_batch(self, data, batch_num):
-
-
-        # data.pop('answer_mask', None)
-        # data.pop('answer', None)
-        data.pop('b_right_mask',None)
-        data.pop('b_left_mask',None)
-        data.pop('w_right_mask',None)
-        data.pop('w_left_mask',None)
-        # data.pop('worse',None)
-        data.pop('w_right',None)
-        data.pop('w_left',None)
-        data.pop('b_right',None)
-        data.pop('b_left',None)
+        #TODO
         data.pop('answer',None)
         data.pop('answer_mask',None)
 
@@ -116,23 +104,16 @@ class EvaluateModel(SimpleExtension):
         data.pop('answers', None)
 
         temp = self.gen_fun(**data)
-        # print"temp: "
         predictions_indices = np.asarray(temp).T
-        # print predictions_indices
 
-        # ww = raw_input("thiss: ")
-        # predictions = temp[0].T
+
         context = data['context']
-        # print context[0]
         predictions = []
         for i,ctx in enumerate(context): #loop over all contexts to get answers
-            # print context[i,predictions_indices[i]]
+
             predictions.append(context[i,predictions_indices[i]])
 
-
-        # print "predictions:"
         predictions = np.asarray(predictions)
-        # print predictions
 
         if self.quiet==False:
             for i in range(len(predictions)):
@@ -174,14 +155,12 @@ class EvaluateModel(SimpleExtension):
 
         answer_bag = (answer[:,None] == np.arange(self.vocab_size)[:,None]).sum(axis=2).clip(0,1)
         answer_bag[:,0:3] = 0
-        # print answers_bag
 
         #predictions_bag = (predictions[:,None] == np.arange(self.vocab_size)[:,None]).sum(axis=2).clip(0,1)
         predictions_bag = (predictions[:,None] == np.arange(self.vocab_size)).sum(axis=1).clip(0,1).sum(axis=1)
         # print predictions_bag.sum(axis=1)
         predictions_bag[:,0:4] = 0
 
-        #print "sel: ", selected_items
         selected_items = predictions_bag.sum(axis=1, dtype=float)
 
         precision = np.zeros(shape=(selected_items.shape[0]),dtype=float)
@@ -244,7 +223,6 @@ class EvaluateModel(SimpleExtension):
         precision_sum, recall_sum, exact_sum,f1_sum = 0.0 , 0.0 , 0.0, 0.0
 
         for data in epoch_iter:
-            # data = epoch_iter.next()
 
             # print('batch %d'%count)
             count += 1
