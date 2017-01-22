@@ -13,7 +13,7 @@ All the models are in the `model` directory, from the basic seq2seq model with a
 
 [Fuel](http://fuel.readthedocs.io/en/latest/) is being used for the data pipeline. `Iterator` and `Dataset` classes for SQuAD and CNN/DailyMotion datasets are available in `data.py` as well as a Toy Dataset for debugging purposes.
 
-*Evaluation extensions* for models in `lmu_extensions.py` are implemented to be used with blocks' *extensions*.
+*Evaluation extensions* for models in `lmu_extensions.py` are implemented to be used with Blocks' *extensions*.
 For seq2seq models average recall, average precision, macro F1, average F1 and exact match accuracies are reported.
 
 
@@ -32,6 +32,7 @@ The heatmap shows the **attention paid** to each token of the **question** at ea
 
 As you can see the SQuAD dataset contains some answers with high lengths which will evidently make sequence to sequence solutions challenging for this task.
 ![Answer length](https://s20.postimg.org/du83urja5/answerlengths.png)
+
 (hotizontal axis is the length and vertical axis is the acc coverage)
 
 
